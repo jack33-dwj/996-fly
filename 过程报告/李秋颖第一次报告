@@ -1,0 +1,163 @@
+首先进行了任务分配，我负责词法分析的界符表和关键字表部分
+我参考了编译原理实验进行编写
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+#include "iostream"
+using namespace std;
+//首先定义种类码
+/*
+第一类：标识符
+第二类：常数
+第三类：关键字(32)
+auto       break    case     char        const      continue
+default    do       double   else        enum       extern
+float      for      goto     if          int        long
+register   return   short    signed      sizeof     static
+struct     switch   typedef  union       unsigned   void
+volatile    while
+
+第四类：界符  ‘/*’、‘//’、 () { } [ ] " "  ' 等
+第五类：运算符 <、<=、>、>=、=、+、-、*、/、^ 等
+
+对所有可数符号进行编码：
+($,0)
+(auto,1)
+...
+(while,32)
+(+，33)
+(-,34)
+(*,35)
+(/,36)
+(<,37)
+(<=,38)
+(>,39)
+(>=,40)
+(=,41)
+(==,42)
+(!=,43)
+(;,44)
+((,45)
+(),46)
+(^,47)
+(,,48)
+(",49)
+(',50)
+(#,51)
+(&,52)
+(&&,53)
+(|,54)
+(||,55)
+(%,56)
+(~,57)
+(<<,58)左移
+(>>,59)右移
+([,60)
+(],61)
+({,62)
+(},63)
+(\,64)
+(.,65)
+(?,66)
+(:,67)
+(!,68)
+"[","]","{","}"
+(99(常数)  ,数值)
+(100(标识符) ，标识符指针)
+*/
+
+//全局变量，关键字表
+static char keyWord[32][20] = {
+    "auto", "break", "case", "char", "const", "continue",
+    "default", "do", "double", "else", "enum", "extern",
+    "float", "for", "goto", "if", "int", "long",
+    "register", "return", "short", "signed", "sizeof", "static",
+    "struct", "switch", "typedef", "union", "unsigned", "void",
+    "volatile", "while"
+};
+//界符运算符表,可增加
+static char operatorOrDelimiter[36][10] = {
+    "+", "-", "*", "/", "<", "<=", ">", ">=", "=", "==",
+    "!=", ";", "(", ")", "^", ",", "\"", "\'", "#", "&",
+    "&&", "|", "||", "%", "~", "<<", ">>", "[", "]", "{",
+    "}", "\\", ".", "\?", ":", "!"
+};
+
+static  char IDentifierTbl[1000][50] = { "" };//标识符表
+
+/********查找关键字*****************/
+int searchKey(char keyWord[][20], char s[])
+{
+    for (int i = 0; i < 32; i++)
+    {
+        if (strcmp(keyWord[i], s) == 0)
+        {//若成功查找，则返回种类码
+            return i + 1;//返回种类码
+        }
+    }
+    return -1;//否则返回-1，代表查找不成功，即为标识符
+}
+
+/*********************判断是否为字母********************/
+bool IsLetter(char letter)
+{//有些语言中，下划线也是标识符的一部分，可以放在首部或其他地方
+    if (((letter >= 'a')&&(letter <= 'z')) || ((letter >= 'A')&&(letter <= 'Z'))|| (letter=='_'))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+/*****************判断是否为数字************************/
+bool IsDigit(char digit)
+{
+    if (digit >= '0'&&digit <= '9')
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+/********************编译预处理，删去无用的字符和注释**********************/
+void filter(char r[], int pProject)
+{
+    char tempString[10000];
+    int count = 0;
+    for (int i = 0; i <= pProject; i++)
+    {
+        if (r[i] == '/'&&r[i + 1] == '/')
+        {//若为单行注释“//”,则删去注释后面的东西，直至遇到回车换行
+            while (r[i] != '\n')
+            {
+                i++;//向后扫描
+            }
+        }
+        if (r[i] == '/'&&r[i + 1] == '*')
+        {//若为多行注释“/* 。。。*/”则删去该内容
+            i += 2;
+            while (r[i] != '*' || r[i + 1] != '/')
+            {
+                i++;//继续扫描
+                if (r[i] == '$')
+                {
+                    printf("注释出错，没有找到 */，程序结束！\n");
+                    exit(0);
+                }
+            }
+            i += 2;//跳过“*/”
+        }
+        if (r[i] != '\n'&&r[i] != '\t'&&r[i] != '\v'&&r[i] != '\r')
+        {//若出现无用字符，则过滤；否则加载
+            tempString[count++] = r[i];
+        }
+    }
+    tempString[count] = '\0';
+    strcpy(r, tempString);//生成净化之后的源程序
+}
+任有许多部分需要改正
