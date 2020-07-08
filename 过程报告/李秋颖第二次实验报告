@@ -1,0 +1,250 @@
+继续进行符号表和关键字表，主要包括以下流程
+预处理，初始化扫描开始，取字符，是否为空格字母，截取完整字符串，是否为关键表，插入符号表中，是否为数字，插入常数表等。
+void Scanner(int &syn, char resourceProject[], char token[], int &pProject)
+{//根据DFA的状态转换图设计
+    int i, count = 0;//count用来做token[]的指示器，收集有用字符
+    char ch;//作为判断使用
+    ch = resourceProject[pProject];
+    while (ch == ' ')
+    {//过滤空格，防止程序因识别不了空格而结束
+        pProject++;
+        ch = resourceProject[pProject];
+    }
+    for (i = 0; i<20; i++)
+    {//每次收集前先清零
+        token[i] = '\0';
+    }
+    if (IsLetter(resourceProject[pProject]))
+    {//如果开头为字母
+        token[count++] = resourceProject[pProject];//收集
+        pProject++;//下移
+        while (IsLetter(resourceProject[pProject]) || IsDigit(resourceProject[pProject]))
+        {//如果后跟字母或数字
+            token[count++] = resourceProject[pProject];//收集
+            pProject++;//后移
+        }//多读了一个字符即是下次将要开始的指针位置
+        token[count] = '\0';
+        syn = searchKey(keyWord, token);//查表找到种类码
+        if (syn == -1)
+        {//若不是关键字，则是标识符
+            syn = 100;//标识符种类码
+        }
+        return;
+    }
+    else if (IsDigit(resourceProject[pProject]))
+    {//如果首字符为数字
+        while (IsDigit(resourceProject[pProject]))
+        {//如果后跟数字
+            token[count++] = resourceProject[pProject];//收集
+            pProject++;
+        }//多读了一个字符即是下次将要开始的指针位置
+        token[count] = '\0';
+        syn = 99;//常数种类码
+    }
+    else if (ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ';' || ch == '(' || ch == ')' || ch == '^'
+        || ch == ',' || ch == '\"' || ch == '\'' || ch == '~' || ch == '#' || ch == '%' || ch == '['
+        || ch == ']' || ch == '{' || ch == '}' || ch == '\\' || ch == '.' || ch == '\?' || ch == ':')
+    {//若为运算符或者界符，查表得到结果
+        token[0] = resourceProject[pProject];
+        token[1] = '\0';//形成单字符串
+        for (i = 0; i<36; i++)
+        {//查运算符界符表
+            if (strcmp(token, operatorOrDelimiter[i]) == 0)
+            {
+                syn = 33 + i;//获得种类码
+                break;//查到就退出
+            }
+        }
+        pProject++;//指针后移，为下一次扫描做准备
+        return;
+    }
+    else  if (resourceProject[pProject] == '<')
+    {//<,<=,<<
+        pProject++;//后移，超前比对
+        if (resourceProject[pProject] == '=')
+        {
+            syn = 38;
+        }
+        else if (resourceProject[pProject] == '<')
+        {//左移
+            pProject--;
+            syn = 58;
+        }
+        else
+        {
+            pProject--;
+            syn = 37;
+        }
+        pProject++;//指针后移
+        return;
+    }
+    else  if (resourceProject[pProject] == '>')
+    {//>,>=,>>
+        pProject++;
+        if (resourceProject[pProject] == '=')
+        {
+            syn = 40;
+        }
+        else if (resourceProject[pProject] == '>')
+        {
+            syn = 59;
+        }
+        else
+        {
+            pProject--;
+            syn = 39;
+        }
+        pProject++;
+        return;
+    }
+    else  if (resourceProject[pProject] == '=')
+    {//=.==
+        pProject++;
+        if (resourceProject[pProject] == '=')
+        {
+            syn = 42;
+        }
+        else
+        {
+            pProject--;
+            syn = 41;
+        }
+        pProject++;
+        return;
+    }
+    else  if (resourceProject[pProject] == '!')
+    {//!,!=
+        pProject++;
+        if (resourceProject[pProject] == '=')
+        {
+            syn = 43;
+        }
+        else
+        {
+            syn = 68;
+            pProject--;
+        }
+        pProject++;
+        return;
+    }
+    else  if (resourceProject[pProject] == '&')
+    {//&,&&
+        pProject++;
+        if (resourceProject[pProject] == '&')
+        {
+            syn = 53;
+        }
+        else
+        {
+            pProject--;
+            syn = 52;
+        }
+        pProject++;
+        return;
+    }
+    else  if (resourceProject[pProject] == '|')
+    {//|,||
+        pProject++;
+        if (resourceProject[pProject] == '|')
+        {
+            syn = 55;
+        }
+        else
+        {
+            pProject--;
+            syn = 54;
+        }
+        pProject++;
+        return;
+    }
+    else  if (resourceProject[pProject] == '$')
+    {//若为结束符
+        syn = 0;//种类码为0
+    }
+    else
+    {//不能被以上任何词法分析识别，则出错
+        printf("Error：there is no exist %c \n", ch);
+        exit(0);
+    }
+}
+
+
+int main()
+{
+    //打开文件，读取源程序
+    char resourceProject[10000];
+    char token[20] = { 0 };
+    int syn = -1, i;//初始化
+    int pProject = 0;//源程序指针
+    FILE *fp, *fp1;//文件指针
+    if ((fp = fopen("D:\\test.txt", "r")) == NULL)
+    {//打开源程序失败
+        cout << "Can not open this file!";
+        exit(0);
+    }
+    resourceProject[pProject] = fgetc(fp);
+    while (resourceProject[pProject] != '$')
+    {//将源程序读入resourceProject[]数组
+        pProject++;
+        resourceProject[pProject] = fgetc(fp);
+    }
+    resourceProject[++pProject] = '\0';
+    fclose(fp);
+    cout << endl << "源程序为:" << endl;
+    cout << resourceProject << endl;
+    //对源程序进行过滤
+    filter(resourceProject, pProject);
+    cout << endl << "过滤之后的程序:" << endl;
+    cout << resourceProject << endl;
+    pProject = 0;//从头开始读
+
+    if ((fp1 = fopen("D:\\result.txt", "w+")) == NULL)
+    {//打开文件失败
+        cout << "Can not open this file!";
+        exit(0);
+    }
+    while (syn != 0)
+    {
+        //开始扫描
+        Scanner(syn, resourceProject, token, pProject);
+        if (syn == 100)
+        {//标识符
+            for (i = 0; i<1000; i++)
+            {//插入标识符表中
+                if (strcmp(IDentifierTbl[i], token) == 0)
+                {//若已在表中
+                    break;
+                }
+                if (strcmp(IDentifierTbl[i], "") == 0)
+                {//查找空间插入
+                    strcpy(IDentifierTbl[i], token);
+                    break;
+                }
+            }
+            cout<<"(100 , "<<token<<")"<<endl;
+            fprintf(fp1, "(100 , %s)\n", token);
+        }
+        else if (syn >= 1 && syn <= 32)
+        {//若是关键字
+            cout<<"("<<syn - 1<<" , - )"<<endl;
+            fprintf(fp1, "(%d , - )\n", syn - 1);
+        }
+        else if (syn == 99)
+        {//const 常数
+            cout<<"(99 , "<<token<<")"<<endl;
+            fprintf(fp1, "(99 , %s)\n", token);
+        }
+        else if (syn >= 33 && syn <= 68)
+        {
+            cout<<"("<<syn - 33<<" , - )"<<endl;
+            fprintf(fp1, "(%d , - )\n", syn - 33);
+        }
+    }
+    for (i = 0; i<100; i++)
+    {//插入标识符表中
+        cout<<"第"<<i + 1<<"个标识符："<<IDentifierTbl[i]<<endl;
+        fprintf(fp1, "第%d个标识符： %s\n", i + 1, IDentifierTbl[i]);
+    }
+    fclose(fp1);
+    system("pause");
+    return 0;
